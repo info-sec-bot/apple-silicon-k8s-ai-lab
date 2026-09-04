@@ -87,18 +87,14 @@ Before deploying to the cluster, both custom Docker images must be built nativel
 ### 🏗️ Build the Custom Images (Mac Host)
 Run these commands in your Mac terminal within the repository root directory:
 ```bash
-# Compile the custom Open WebUI Red-Team image
+# Compile the custom Open WebUI Red-Team image natively for ARM64
 docker build -t local-ctf-webui:arm64 -f Dockerfile.openwebui .
-
-# Compile the custom AI-CTF Pipelines infrastructure engine
-docker build -t local-ctf-pipelines:arm64 -f Dockerfile.pipelines .
 ```
 
 ### 🛰️ Side-Load Images into Kind Cache (Bypassing ErrImageNeverPull)
-Because Kind runs inside an isolated virtual machine container, you must explicitly push these local images into the cluster node cache:
+Because Kind runs inside an isolated virtual machine container, you must explicitly push your local image into the cluster node cache:
 ```bash
 sudo kind load docker-image local-ctf-webui:arm64 --name ctf-cluster
-sudo kind load docker-image local-ctf-pipelines:arm64 --name ctf-cluster
 ```
 
 ### 📄 Unified Core Manifest Layout (`ai-ctf-hybrid.yaml`)
