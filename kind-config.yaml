@@ -1,0 +1,15 @@
+apiVersion: kind.x-k8s.io/v1alpha4
+kind: Cluster
+name: ctf-cluster
+nodes:
+- role: control-plane
+  extraPortMappings:
+  # 🎯 Open WebUI Frontend Access Bridge
+  - containerPort: 30242
+    hostPort: 4242
+    protocol: TCP
+  # 🎯 Jupyter Notebook Offensive Workspace Access Bridge
+  - containerPort: 30888
+    hostPort: 8888
+    protocol: TCP
+

@@ -1,0 +1,118 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ctf-env-config
+data:
+  BYPASS_MODEL_ACCESS_CONTROL: "true"
+  WEBUI_PORT: "8080"
+  OLLAMA_BASE_URL: "http://ollama-bridge-svc:11434"
+  HF_HUB_OFFLINE: "1"                         
+  RAG_EMBEDDING_ENGINE: "ollama"
+  PDF_EXTRACT_ENGINE: "tika"
+  ENABLE_SIGNUP: "false"
+  DEFAULT_MODELS: "llama3"
+  ADMIN_USER: "admin@ctf.local"
+  STANDARD_USER: "ctf@ctf.local"
+  WEBUI_ADMIN_NAME: "CTF Admin"
+  WEBUI_ADMIN_EMAIL: "admin@ctf.local"
+  WEBUI_ADMIN_PASSWORD: "ctf_admin_password"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama-bridge-svc
+spec:
+  ports:
+    - protocol: TCP
+      port: 11434
+      targetPort: 11434
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: ollama-bridge-svc
+subsets:
+  - addresses:
+      - ip: 172.20.20.20 # 🎯 Active Mac Host LAN IP bridging to your M1 Pro GPU - run `ipconfig getifaddr en0`
+    ports:
+      - port: 11434
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ctf-openwebui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ctf-openwebui
+  template:
+    metadata:
+      labels:
+        app: ctf-openwebui
+    spec:
+      containers:
+        - name: openwebui
+          image: local-ctf-webui:arm64
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: ctf-env-config
+          env:
+            - name: PORT
+              value: "8080"
+          volumeMounts:
+            - name: webui-data
+              mountPath: /app/backend/data
+      volumes:
+        - name: webui-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ctf-openwebui-svc
+spec:
+  type: NodePort
+  ports:
+    - port: 4242          
+      targetPort: 8080    
+      nodePort: 30242
+  selector:
+    app: ctf-openwebui
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ctf-jupyter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ctf-jupyter
+  template:
+    metadata:
+      labels:
+        app: ctf-jupyter
+    spec:
+      containers:
+        - name: jupyter
+          image: jupyter/base-notebook:latest
+          ports:
+            - containerPort: 8888
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ctf-jupyter-svc
+spec:
+  type: NodePort
+  ports:
+    - port: 8888
+      targetPort: 8888
+      nodePort: 30888
+  selector:
+    app: ctf-jupyter
+
