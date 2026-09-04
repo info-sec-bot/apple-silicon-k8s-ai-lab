@@ -80,7 +80,28 @@ To avoid virtualized driver overhead inside the nested Docker Linux VM, host you
    ```bash
    ipconfig getifaddr en0
    ```
-## 🚀 3. Unified Core Manifest Layout (`ai-ctf-hybrid.yaml`)
+## 🚀 3. Container Compilation & Cluster Deployment Matrix
+
+Before deploying to the cluster, both custom Docker images must be built natively for Apple Silicon (ARM64) and side-loaded directly into the Kind node's container runtime cache to satisfy the `Never` pull policies.
+
+### 🏗️ Build the Custom Images (Mac Host)
+Run these commands in your Mac terminal within the repository root directory:
+```bash
+# Compile the custom Open WebUI Red-Team image
+docker build -t local-ctf-webui:arm64 -f Dockerfile.openwebui .
+
+# Compile the custom AI-CTF Pipelines infrastructure engine
+docker build -t local-ctf-pipelines:arm64 -f Dockerfile.pipelines .
+```
+
+### 🛰️ Side-Load Images into Kind Cache (Bypassing ErrImageNeverPull)
+Because Kind runs inside an isolated virtual machine container, you must explicitly push these local images into the cluster node cache:
+```bash
+sudo kind load docker-image local-ctf-webui:arm64 --name ctf-cluster
+sudo kind load docker-image local-ctf-pipelines:arm64 --name ctf-cluster
+```
+
+### 📄 Unified Core Manifest Layout (`ai-ctf-hybrid.yaml`)
 
 This master manifest maps your platform settings, handles air-gapped caching performance parameters, and sets up a manual **Kubernetes Endpoints proxy** to stream API prompts out to your M1 Pro GPU. 
 
@@ -205,6 +226,20 @@ spec:
   selector:
     app: ctf-jupyter
 ```
+
+### ⚡ Deploy & Establish Traffic Communication Lines
+
+To sync network rules across your cluster node layers and gain access to the web panel, flush out old cached entries, apply the new manifest, and spin up your local traffic tunnel bridge session:
+
+```bash
+# Force clear the old manual endpoints and apply the manifest
+kubectl delete endpoints ollama-bridge-svc --ignore-not-found=true
+kubectl apply -f ai-ctf-hybrid.yaml
+
+# Build your secure port-forward tunnel bridge session
+kubectl port-forward svc/ctf-openwebui-svc 4242:4242
+```
+
 
 ### ⚡ Deploy & Establish Traffic Communication Lines
 
